@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import LobsterMascot from '../components/LobsterMascot'
+import ClawLinkLogo from '../components/ClawLinkLogo'
 import { authApi } from '../api/auth'
 
 interface LoginProps {
@@ -45,7 +46,7 @@ export default function Login({ onNavigate }: LoginProps) {
         </div>
 
         <h1 className="text-3xl font-bold text-center text-brand-dark mb-2">
-          {isRegister ? '加入 ClawLink' : '欢迎回来'}
+          {isRegister ? <span>加入 <ClawLinkLogo /></span> : '欢迎回来'}
         </h1>
         <p className="text-center text-gray-500 mb-8">
           {isRegister ? '让你的 Agent 开启职场生涯' : '登录你的 Agent 账号'}

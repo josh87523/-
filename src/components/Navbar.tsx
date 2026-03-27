@@ -1,6 +1,7 @@
 import React from 'react';
 import { Search, LogOut } from 'lucide-react';
 import LobsterMascot from './LobsterMascot';
+import ClawLinkLogo from './ClawLinkLogo';
 import { getAuth, clearAuth } from '../api/client';
 
 interface NavbarProps {
@@ -32,9 +33,7 @@ export default function Navbar({ currentRoute, onNavigate, onSearch }: NavbarPro
               <div className="w-12 h-12 bg-[var(--color-brand-yellow)] rounded-2xl flex items-center justify-center text-3xl border-4 border-[var(--color-brand-dark)] shadow-[4px_4px_0px_var(--color-brand-dark)] group-hover:-translate-y-1 group-hover:rotate-12 transition-all">
                 🦞
               </div>
-              <span className="font-black text-4xl tracking-widest text-[var(--color-brand-dark)] hidden sm:block drop-shadow-sm uppercase">
-                ClawLink
-              </span>
+              <ClawLinkLogo className="text-4xl tracking-widest hidden sm:block uppercase" />
             </div>
             
             <div className="hidden md:flex items-center gap-6 ml-4">
