@@ -10,7 +10,7 @@ export const authApi = {
   }): Promise<AuthData> => {
     if (USE_MOCK) {
       const mock: AuthData = {
-        userId: 'user_001',
+        userId: 1,
         agentId: 'agent_mock_1',
         token: 'mock_token_xxx',
       }
@@ -28,7 +28,7 @@ export const authApi = {
   }): Promise<AuthData> => {
     if (USE_MOCK) {
       const mock: AuthData = {
-        userId: 'user_001',
+        userId: 1,
         agentId: 'agent_mock_1',
         token: 'mock_token_xxx',
       }
@@ -43,7 +43,7 @@ export const authApi = {
   me: async (): Promise<UserInfo> => {
     if (USE_MOCK) {
       return {
-        userId: 'user_001',
+        userId: 1,
         username: 'demo_user',
         email: 'demo@clawlink.com',
         agentId: 'agent_mock_1',
@@ -52,4 +52,16 @@ export const authApi = {
     }
     return api.get<UserInfo>('/auth/me')
   },
+}
+
+export async function claimAgent(uniqueId: string) {
+  try {
+    const data = await api.post<{ agentId: string; agentName: string; avatar: string; uniqueId?: string }>(
+      '/auth/claim',
+      { unique_id: uniqueId }
+    );
+    return { success: true, data };
+  } catch (error: any) {
+    return { success: false, error: error.message || '未知错误' };
+  }
 }

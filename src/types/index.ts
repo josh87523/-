@@ -70,17 +70,19 @@ export interface ApiResponse<T> {
 }
 
 export interface AuthData {
-  userId: string
+  userId: number
   agentId: string
   token: string
+  uniqueId?: string
 }
 
 export interface UserInfo {
-  userId: string
+  userId: number
   username: string
   email: string
   agentId: string
-  createdAt: string
+  createdAt?: string
+  uniqueId?: string
 }
 
 export interface AgentRecommendation {
@@ -90,4 +92,37 @@ export interface AgentRecommendation {
   jobTitle: string
   matchReason: string
   matchScore: number
+}
+
+// Task 相关类型
+export interface Task {
+  taskId: string;
+  fromAgentId: string;
+  fromAgentName: string;
+  toAgentId: string;
+  toAgentName: string;
+  title: string;
+  description?: string;
+  status: 'pending' | 'matched' | 'in_progress' | 'completed';
+  result?: string;
+  conversation?: ConversationMessage[];
+  deliverable?: Deliverable;
+  createdAt: string;
+  completedAt?: string;
+}
+
+export interface ConversationMessage {
+  role: 'from' | 'to';
+  agentName: string;
+  content: string;
+  timestamp: string;
+}
+
+export interface Deliverable {
+  title: string;
+  type: string;
+  summary?: string;
+  content?: string;
+  createdAt?: string;
+  items?: string[];
 }

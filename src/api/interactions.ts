@@ -1,4 +1,5 @@
 import { api, USE_MOCK } from './client'
+import { buildPagination, mapBackendBriefToProfile, mapBackendComment } from './adapters'
 import type { Comment, Pagination, AgentProfile } from '../types'
 
 export const interactionsApi = {
@@ -11,7 +12,8 @@ export const interactionsApi = {
     if (USE_MOCK) {
       return { liked: data.action === 'like', likeCount: Math.floor(Math.random() * 50) }
     }
-    return api.post('/interactions/like', data)
+    await api.post('/interactions/like', data)
+    return { liked: data.action === 'like', likeCount: 0 }
   },
 
   comment: async (data: {
@@ -22,7 +24,11 @@ export const interactionsApi = {
     if (USE_MOCK) {
       return { commentId: 'cmt_mock_' + Date.now(), createdAt: new Date().toISOString() }
     }
-    return api.post('/interactions/comment', data)
+    const result = await api.post<{ commentId: string; createdAt: string }>('/interactions/comment', data)
+    return {
+      commentId: result.commentId,
+      createdAt: result.createdAt,
+    }
   },
 
   getComments: async (
@@ -48,7 +54,12 @@ export const interactionsApi = {
     if (params?.page) query.set('page', String(params.page))
     if (params?.limit) query.set('limit', String(params.limit))
     const qs = query.toString()
-    return api.get(`/interactions/comments/${postId}${qs ? '?' + qs : ''}`)
+    const result = await api.get<Array<Record<string, unknown>>>(`/interactions/comments/${postId}${qs ? '?' + qs : ''}`)
+    const comments = result.map((comment) => mapBackendComment(comment as never))
+    return {
+      comments,
+      pagination: buildPagination(params?.page || 1, params?.limit || comments.length || 20, comments.length),
+    }
   },
 
   connect: async (data: {
@@ -59,7 +70,8 @@ export const interactionsApi = {
     if (USE_MOCK) {
       return { following: data.action === 'follow', followerCount: Math.floor(Math.random() * 100) }
     }
-    return api.post('/interactions/connect', data)
+    await api.post('/interactions/connect', data)
+    return { following: data.action === 'follow', followerCount: 0 }
   },
 
   getFollowing: async (
@@ -71,8 +83,14 @@ export const interactionsApi = {
     }
     const query = new URLSearchParams()
     if (params?.page) query.set('page', String(params.page))
+    if (params?.limit) query.set('limit', String(params.limit))
     const qs = query.toString()
-    return api.get(`/interactions/following/${agentId}${qs ? '?' + qs : ''}`)
+    const result = await api.get<Array<Record<string, unknown>>>(`/interactions/following/${agentId}${qs ? '?' + qs : ''}`)
+    const following = result.map((agent) => mapBackendBriefToProfile(agent as never))
+    return {
+      following,
+      pagination: buildPagination(params?.page || 1, params?.limit || following.length || 20, following.length),
+    }
   },
 
   getFollowers: async (
@@ -84,7 +102,13 @@ export const interactionsApi = {
     }
     const query = new URLSearchParams()
     if (params?.page) query.set('page', String(params.page))
+    if (params?.limit) query.set('limit', String(params.limit))
     const qs = query.toString()
-    return api.get(`/interactions/followers/${agentId}${qs ? '?' + qs : ''}`)
+    const result = await api.get<Array<Record<string, unknown>>>(`/interactions/followers/${agentId}${qs ? '?' + qs : ''}`)
+    const followers = result.map((agent) => mapBackendBriefToProfile(agent as never))
+    return {
+      followers,
+      pagination: buildPagination(params?.page || 1, params?.limit || followers.length || 20, followers.length),
+    }
   },
 }

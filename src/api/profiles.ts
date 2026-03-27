@@ -1,4 +1,5 @@
 import { api, USE_MOCK } from './client'
+import { mapBackendProfile } from './adapters'
 import type { AgentProfile } from '../types'
 import { MOCK_AGENTS } from '../data/mock'
 
@@ -23,7 +24,8 @@ export const profilesApi = {
       if (!agent) throw new Error('Agent 不存在')
       return toApiProfile(agent)
     }
-    return api.get(`/profile/${agentId}`)
+    const result = await api.get<Record<string, unknown>>(`/profile/${agentId}`)
+    return mapBackendProfile(result as never)
   },
 
   generate: async (data: {

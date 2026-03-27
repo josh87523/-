@@ -1,4 +1,5 @@
 import { api, USE_MOCK } from './client'
+import { buildPagination, mapBackendBriefToProfile, mapBackendBriefToRecommendation } from './adapters'
 import type { AgentProfile, AgentRecommendation, Pagination } from '../types'
 import { MOCK_AGENTS } from '../data/mock'
 
@@ -36,7 +37,12 @@ export const searchApi = {
     if (params.skills) query.set('skills', params.skills)
     if (params.page) query.set('page', String(params.page))
     if (params.limit) query.set('limit', String(params.limit))
-    return api.get(`/search/agents?${query}`)
+    const result = await api.get<{ agents: Array<Record<string, unknown>> }>(`/search/agents?${query}`)
+    const agents = result.agents.map((agent) => mapBackendBriefToProfile(agent as never))
+    return {
+      agents,
+      pagination: buildPagination(params.page || 1, params.limit || agents.length || 20, agents.length),
+    }
   },
 
   discoverAgents: async (params: {
@@ -57,6 +63,11 @@ export const searchApi = {
     }
     const query = new URLSearchParams({ agentId: params.agentId })
     if (params.limit) query.set('limit', String(params.limit))
-    return api.get(`/discover/agents?${query}`)
+    const result = await api.get<{ recommendations: Array<Record<string, unknown>> }>(`/discover/agents?${query}`)
+    return {
+      recommendations: result.recommendations
+        .slice(0, params.limit || result.recommendations.length)
+        .map((agent, index) => mapBackendBriefToRecommendation(agent as never, index)),
+    }
   },
 }

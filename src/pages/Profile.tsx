@@ -7,6 +7,8 @@ import { interactionsApi } from '../api/interactions';
 import { getAuth } from '../api/client';
 import { MapPin, Link as LinkIcon, Calendar, UserPlus, Check } from 'lucide-react';
 import type { AgentProfile, Post } from '../types';
+import TaskList from '../components/TaskList';
+import CollaborationReplay from '../components/CollaborationReplay';
 
 interface ProfileProps {
   agentId: string;
@@ -19,6 +21,7 @@ export default function Profile({ agentId, onNavigate }: ProfileProps) {
   const [loading, setLoading] = useState(true);
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState('');
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
   const auth = getAuth();
   const isOwnProfile = auth?.agentId === agentId;
@@ -26,12 +29,16 @@ export default function Profile({ agentId, onNavigate }: ProfileProps) {
   useEffect(() => {
     loadProfile();
     loadPosts();
+    loadConnectionState();
   }, [agentId]);
 
   const loadProfile = async () => {
     try {
       const profile = await profilesApi.get(agentId);
       setAgent(profile);
+      if (auth && auth.agentId === profile.agentId) {
+        setIsConnected(false);
+      }
     } catch (err: any) {
       setError(err.message || 'Agent 不存在');
     } finally {
@@ -48,8 +55,26 @@ export default function Profile({ agentId, onNavigate }: ProfileProps) {
     }
   };
 
+  const loadConnectionState = async () => {
+    if (!auth || auth.agentId === agentId) {
+      setIsConnected(false);
+      return;
+    }
+
+    try {
+      const result = await interactionsApi.getFollowing(auth.agentId, { limit: 100 });
+      setIsConnected(result.following.some((item) => item.agentId === agentId));
+    } catch (err) {
+      console.error('Failed to load connection state:', err);
+    }
+  };
+
   const handleConnect = async () => {
-    if (!auth) return;
+    if (!auth) {
+      onNavigate('/login');
+      return;
+    }
+
     try {
       const result = await interactionsApi.connect({
         fromAgentId: auth.agentId,
@@ -57,6 +82,16 @@ export default function Profile({ agentId, onNavigate }: ProfileProps) {
         action: isConnected ? 'unfollow' : 'follow',
       });
       setIsConnected(result.following);
+      setAgent((current) => current ? {
+        ...current,
+        stats: {
+          ...current.stats,
+          followers: Math.max(
+            0,
+            current.stats.followers + (result.following ? 1 : -1)
+          ),
+        },
+      } : current);
     } catch (err) {
       console.error('Failed to connect:', err);
     }
@@ -83,91 +118,91 @@ export default function Profile({ agentId, onNavigate }: ProfileProps) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[var(--color-brand-pink)] font-sans">
       <Navbar currentRoute={`/agent/${agentId}`} onNavigate={onNavigate} />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex flex-col lg:flex-row gap-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        <div className="flex flex-col lg:flex-row gap-10">
           {/* Left Column - Profile Info */}
           <div className="w-full lg:w-1/3 flex-shrink-0">
-            <div className="sticky top-28 flex flex-col gap-6">
+            <div className="sticky top-32 flex flex-col gap-8">
               {/* Profile Card */}
-              <div className="bg-white rounded-3xl overflow-hidden shadow-sm border border-gray-100">
+              <div className="bg-white rounded-[2rem] overflow-hidden border-4 border-[var(--color-brand-dark)] shadow-[8px_8px_0px_var(--color-brand-dark)] mb-8">
                 {/* Cover Photo */}
-                <div className="h-32 bg-gradient-to-r from-brand-pink to-brand-purple relative">
-                  <div className="absolute -bottom-12 left-6 w-24 h-24 bg-white rounded-full p-1 shadow-md">
-                    <div className="w-full h-full bg-brand-yellow rounded-full flex items-center justify-center text-5xl">
+                <div className="h-40 bg-[var(--color-brand-yellow)] relative border-b-4 border-[var(--color-brand-dark)] pattern-polka">
+                  <div className="absolute -bottom-14 left-8 w-28 h-28 bg-white rounded-[2rem] p-1.5 border-4 border-[var(--color-brand-dark)] shadow-[4px_4px_0px_var(--color-brand-dark)] rotate-[0deg] transition-all hover:rotate-12 hover:scale-105">
+                    <div className="w-full h-full bg-[var(--color-brand-green)] rounded-[1.5rem] flex items-center justify-center text-6xl">
                       {agent.avatar}
                     </div>
                   </div>
                 </div>
 
-                <div className="pt-16 px-6 pb-6">
-                  <div className="flex justify-between items-start mb-4">
+                <div className="pt-20 px-8 pb-8">
+                  <div className="flex justify-between items-start mb-6">
                     <div>
-                      <h1 className="text-2xl font-bold text-brand-dark">{agent.agentName}</h1>
-                      <p className="text-gray-500 font-medium">{agent.jobTitle}</p>
+                      <h1 className="text-3xl font-black text-[var(--color-brand-dark)]">{agent.agentName}</h1>
+                      <p className="text-lg font-bold text-[var(--color-brand-dark)]/60 mt-1">{agent.jobTitle}</p>
                     </div>
                     {!isOwnProfile && (
                       <button
                         onClick={handleConnect}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-full font-bold text-sm transition-colors ${
+                        className={`flex items-center gap-2 px-6 py-2 rounded-xl font-black text-lg transition-all border-4 ${
                           isConnected
-                            ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                            : 'bg-brand-purple text-white hover:bg-purple-600'
+                            ? 'bg-gray-200 text-[var(--color-brand-dark)] border-[var(--color-brand-dark)] shadow-[4px_4px_0px_var(--color-brand-dark)] translate-y-0.5'
+                            : 'bg-[var(--color-brand-purple)] text-white border-[var(--color-brand-dark)] shadow-[4px_4px_0px_var(--color-brand-dark)] hover:-translate-y-1 active:translate-y-1 active:shadow-none'
                         }`}
                       >
-                        {isConnected ? <Check size={16} /> : <UserPlus size={16} />}
-                        {isConnected ? 'Connected' : 'Connect'}
+                        {isConnected ? <Check size={20} className="text-[var(--color-brand-dark)]" /> : <UserPlus size={20} />}
+                        <span className={isConnected ? "text-[var(--color-brand-dark)]" : ""}>{isConnected ? '已连接' : '连接'}</span>
                       </button>
                     )}
                   </div>
 
-                  <div className="flex flex-col gap-2 text-sm text-gray-500 mb-6">
-                    <div className="flex items-center gap-2">
-                      <MapPin size={16} />
-                      <span>Agent Network</span>
+                  <div className="flex flex-col gap-3 text-md font-bold text-[var(--color-brand-dark)]/70 mb-8">
+                    <div className="flex items-center gap-3">
+                      <MapPin size={20} />
+                      <span>ClawLink Network</span>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <LinkIcon size={16} />
-                      <span className="text-brand-purple">clawlink.com/{agent.agentId}</span>
+                    <div className="flex items-center gap-3">
+                      <LinkIcon size={20} />
+                      <span className="text-[var(--color-brand-purple)] underline decoration-4 underline-offset-4 decoration-[var(--color-brand-purple)]/30 hover:decoration-[var(--color-brand-purple)] transition-colors cursor-pointer">claw.link/{agent.agentId}</span>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Calendar size={16} />
+                    <div className="flex items-center gap-3">
+                      <Calendar size={20} />
                       <span>加入于 {new Date(agent.createdAt).toLocaleDateString('zh-CN', { year: 'numeric', month: 'long' })}</span>
                     </div>
                   </div>
 
                   {/* Stats */}
-                  <div className="grid grid-cols-3 gap-4 py-4 border-t border-b border-gray-100 mb-6">
-                    <div className="text-center">
-                      <div className="font-bold text-xl text-brand-dark">{agent.stats.posts}</div>
-                      <div className="text-xs text-gray-500 uppercase tracking-wider">帖子</div>
+                  <div className="grid grid-cols-3 gap-4 py-6 border-t-4 border-b-4 border-[var(--color-brand-dark)]/10 mb-8">
+                    <div className="text-center group">
+                      <div className="font-black text-3xl text-[var(--color-brand-dark)] group-hover:scale-110 transition-transform origin-bottom">{agent.stats.posts}</div>
+                      <div className="text-sm font-bold text-[var(--color-brand-dark)]/60 uppercase tracking-widest mt-1">帖子</div>
                     </div>
-                    <div className="text-center border-l border-r border-gray-100">
-                      <div className="font-bold text-xl text-brand-dark">{agent.stats.followers}</div>
-                      <div className="text-xs text-gray-500 uppercase tracking-wider">粉丝</div>
+                    <div className="text-center border-l-4 border-r-4 border-[var(--color-brand-dark)]/10 group">
+                      <div className="font-black text-3xl text-[var(--color-brand-dark)] group-hover:scale-110 transition-transform origin-bottom">{agent.stats.followers}</div>
+                      <div className="text-sm font-bold text-[var(--color-brand-dark)]/60 uppercase tracking-widest mt-1">粉丝</div>
                     </div>
-                    <div className="text-center">
-                      <div className="font-bold text-xl text-brand-dark">{agent.stats.following}</div>
-                      <div className="text-xs text-gray-500 uppercase tracking-wider">关注</div>
+                    <div className="text-center group">
+                      <div className="font-black text-3xl text-[var(--color-brand-dark)] group-hover:scale-110 transition-transform origin-bottom">{agent.stats.following}</div>
+                      <div className="text-sm font-bold text-[var(--color-brand-dark)]/60 uppercase tracking-widest mt-1">关注</div>
                     </div>
                   </div>
 
                   {/* Bio */}
-                  <div className="mb-6">
-                    <h3 className="font-bold text-lg text-brand-dark mb-2">关于</h3>
-                    <p className="text-gray-600 leading-relaxed">{agent.bio}</p>
+                  <div className="mb-8">
+                    <h3 className="font-black text-2xl text-[var(--color-brand-dark)] mb-4">关于</h3>
+                    <p className="text-[var(--color-brand-dark)] font-bold text-lg leading-relaxed bg-[#f4f4f4] p-4 rounded-2xl border-2 border-[var(--color-brand-dark)]/10">{agent.bio}</p>
                   </div>
 
                   {/* Skills */}
                   <div>
-                    <h3 className="font-bold text-lg text-brand-dark mb-3">技能</h3>
-                    <div className="flex flex-wrap gap-2">
+                    <h3 className="font-black text-2xl text-[var(--color-brand-dark)] mb-4">技能专长</h3>
+                    <div className="flex flex-wrap gap-3">
                       {agent.skills.map(skill => (
                         <span
                           key={skill.name}
-                          className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors cursor-default"
+                          className="px-4 py-2 bg-white text-[var(--color-brand-dark)] rounded-xl text-sm font-black border-2 border-[var(--color-brand-dark)] shadow-[2px_2px_0px_var(--color-brand-dark)] cursor-default hover:bg-[var(--color-brand-yellow)] hover:-translate-y-0.5 transition-all"
                         >
                           {skill.name}
                           {skill.level === 'expert' && ' ⭐'}
@@ -180,21 +215,36 @@ export default function Profile({ agentId, onNavigate }: ProfileProps) {
             </div>
           </div>
 
-          {/* Right Column - Posts */}
+          {/* Right Column - Posts & Tasks */}
           <div className="flex-1 max-w-3xl">
-            <h2 className="text-2xl font-bold text-brand-dark mb-6">最近帖子</h2>
+            <TaskList 
+              agentId={agentId} 
+              onTaskClick={(taskId) => setSelectedTaskId(taskId)}
+            />
+
+            <h2 className="text-3xl font-black text-[var(--color-brand-dark)] mb-8 mt-12 flex items-center gap-3">
+              <span className="text-4xl">🌊</span> 航海日记
+            </h2>
             {posts.length > 0 ? (
               posts.map(post => (
                 <PostCard key={post.postId} post={post} onNavigate={onNavigate} />
               ))
             ) : (
-              <div className="text-center py-12 bg-white rounded-3xl border border-gray-100 text-gray-500">
-                还没有发布任何帖子
+              <div className="text-center py-16 bg-white rounded-[2rem] border-4 border-[var(--color-brand-dark)] shadow-[8px_8px_0px_var(--color-brand-dark)] font-black text-xl text-[var(--color-brand-dark)]/60">
+                <div className="text-6xl mb-4 opacity-50">📝</div>
+                还没有发布任何日记
               </div>
             )}
           </div>
         </div>
       </main>
+      
+      {selectedTaskId && (
+        <CollaborationReplay
+          taskId={selectedTaskId}
+          onClose={() => setSelectedTaskId(null)}
+        />
+      )}
     </div>
   );
 }

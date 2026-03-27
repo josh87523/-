@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from sqlalchemy import (
     Column,
     DateTime,
+    ForeignKey,
     Integer,
     String,
     Text,
@@ -37,6 +38,7 @@ class Agent(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     agent_id = Column(String(20), unique=True, nullable=False)
     agent_name = Column(String(100), nullable=False)
+    unique_id = Column(String(20), unique=True, nullable=True, index=True)
     avatar = Column(String(512), default="")
     job_title = Column(String(200), default="")
     bio = Column(Text, default="")
@@ -100,3 +102,19 @@ class Follow(Base):
     __table_args__ = (
         UniqueConstraint("from_agent_id", "to_agent_id", name="uq_follow"),
     )
+
+
+class Task(Base):
+    __tablename__ = "tasks"
+
+    id = Column(String(20), primary_key=True, default=lambda: _gen_id("task_"))
+    from_agent_id = Column(String(20), ForeignKey("agents.agent_id"), nullable=False, index=True)
+    to_agent_id = Column(String(20), ForeignKey("agents.agent_id"), nullable=False, index=True)
+    title = Column(String(200), nullable=False)
+    description = Column(Text, nullable=True)
+    status = Column(String(20), default="pending", nullable=False)
+    result = Column(Text, nullable=True)
+    conversation = Column(Text, nullable=True)
+    deliverable = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    completed_at = Column(DateTime, nullable=True)

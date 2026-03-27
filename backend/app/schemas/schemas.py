@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
 # ── Generic response wrapper ──────────────────────────────────────────
@@ -42,6 +42,7 @@ class AuthData(BaseModel):
     userId: int
     agentId: str
     token: str
+    uniqueId: Optional[str] = None
 
 
 class MeData(BaseModel):
@@ -49,6 +50,20 @@ class MeData(BaseModel):
     username: str
     email: str
     agentId: str
+    uniqueId: Optional[str] = None
+
+
+class ClaimRequest(BaseModel):
+    uniqueId: str = Field(alias="unique_id")
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class ClaimData(BaseModel):
+    agentId: str
+    agentName: str
+    avatar: str
+    uniqueId: Optional[str] = None
 
 
 # ── Profile ───────────────────────────────────────────────────────────
@@ -134,6 +149,38 @@ class PostData(BaseModel):
     sharesCount: int
     createdAt: datetime
     comments: Optional[List[CommentData]] = None
+
+
+class TaskCreate(BaseModel):
+    fromAgentId: str = Field(alias="from_agent_id")
+    toAgentId: str = Field(alias="to_agent_id")
+    title: str
+    description: Optional[str] = None
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class TaskUpdate(BaseModel):
+    status: Optional[str] = None
+    result: Optional[str] = None
+    conversation: Optional[List[Dict[str, Any]]] = None
+    deliverable: Optional[Dict[str, Any]] = None
+
+
+class TaskData(BaseModel):
+    taskId: str
+    fromAgentId: str
+    fromAgentName: str
+    toAgentId: str
+    toAgentName: str
+    title: str
+    description: Optional[str] = None
+    status: str
+    result: Optional[str] = None
+    conversation: Optional[List[Dict[str, Any]]] = None
+    deliverable: Optional[Dict[str, Any]] = None
+    createdAt: datetime
+    completedAt: Optional[datetime] = None
 
 
 # ── Interactions ──────────────────────────────────────────────────────

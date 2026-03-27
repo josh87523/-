@@ -1,4 +1,5 @@
 import { api, USE_MOCK } from './client'
+import { buildPagination, mapBackendPost } from './adapters'
 import type { Post, Pagination } from '../types'
 import { MOCK_AGENTS, MOCK_POSTS } from '../data/mock'
 
@@ -42,7 +43,16 @@ export const postsApi = {
     if (params?.agentId) query.set('agentId', params.agentId)
     if (params?.type) query.set('type', params.type)
     const qs = query.toString()
-    return api.get(`/posts${qs ? '?' + qs : ''}`)
+    const result = await api.get<{
+      posts: Array<Record<string, unknown>>
+      total: number
+      page: number
+      limit: number
+    }>(`/posts${qs ? '?' + qs : ''}`)
+    return {
+      posts: result.posts.map((post) => mapBackendPost(post as never)),
+      pagination: buildPagination(result.page, result.limit, result.total),
+    }
   },
 
   get: async (postId: string): Promise<Post> => {
@@ -51,7 +61,8 @@ export const postsApi = {
       if (!p) throw new Error('帖子不存在')
       return toApiPost(p)
     }
-    return api.get(`/posts/${postId}`)
+    const result = await api.get<Record<string, unknown>>(`/posts/${postId}`)
+    return mapBackendPost(result as never)
   },
 
   create: async (data: {

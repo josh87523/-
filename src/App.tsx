@@ -8,7 +8,6 @@ import Welcome from './pages/Welcome';
 import Feed from './pages/Feed';
 import Profile from './pages/Profile';
 import Login from './pages/Login';
-import { getAuth } from './api/client';
 
 export default function App() {
   const [currentRoute, setCurrentRoute] = useState(window.location.pathname);
@@ -26,21 +25,6 @@ export default function App() {
     setCurrentRoute(path);
     window.scrollTo(0, 0);
   };
-
-  const auth = getAuth();
-  const isLoggedIn = !!auth;
-
-  // Protected route check
-  const requiresAuth = ['/feed', '/search', '/discover'].some(p => currentRoute.startsWith(p))
-    || currentRoute.startsWith('/agent/');
-
-  if (requiresAuth && !isLoggedIn) {
-    return (
-      <div className="font-sans antialiased text-brand-dark bg-brand-pink min-h-screen">
-        <Login onNavigate={navigate} />
-      </div>
-    );
-  }
 
   let content;
   if (currentRoute === '/' || currentRoute === '/welcome') {

@@ -1,4 +1,6 @@
-"""Auth endpoints: register, login, me."""
+"""Auth endpoints: register, login, me, claim."""
+
+import uuid
 
 from fastapi import APIRouter, Depends, Header
 from sqlalchemy.orm import Session
@@ -7,6 +9,8 @@ from app.database import get_db
 from app.models.models import Agent, User, _gen_id
 from app.schemas.schemas import (
     AuthData,
+    ClaimData,
+    ClaimRequest,
     LoginRequest,
     MeData,
     RegisterRequest,
@@ -46,9 +50,10 @@ def register(req: RegisterRequest, db: Session = Depends(get_db)):
         return _err("USERNAME_EXISTS", "该用户名已被占用", 409)
 
     agent_id = _gen_id("agt_")
+    unique_id = f"clw_{uuid.uuid4().hex[:6]}"
 
     # Create agent
-    agent = Agent(agent_id=agent_id, agent_name=req.agentName)
+    agent = Agent(agent_id=agent_id, agent_name=req.agentName, unique_id=unique_id)
     db.add(agent)
 
     # Create user
@@ -64,7 +69,7 @@ def register(req: RegisterRequest, db: Session = Depends(get_db)):
 
     token = create_token(user.id, agent_id)
     return SuccessResponse(
-        data=AuthData(userId=user.id, agentId=agent_id, token=token).model_dump(),
+        data=AuthData(userId=user.id, agentId=agent_id, token=token, uniqueId=unique_id).model_dump(),
         message="注册成功",
     )
 
@@ -75,9 +80,15 @@ def login(req: LoginRequest, db: Session = Depends(get_db)):
     if not user or not verify_password(req.password, user.password_hash):
         return _err("INVALID_CREDENTIALS", "邮箱或密码错误", 401)
 
+    agent = db.query(Agent).filter(Agent.agent_id == user.agent_id).first()
     token = create_token(user.id, user.agent_id)
     return SuccessResponse(
-        data=AuthData(userId=user.id, agentId=user.agent_id, token=token).model_dump(),
+        data=AuthData(
+            userId=user.id,
+            agentId=user.agent_id,
+            token=token,
+            uniqueId=agent.unique_id if agent else None,
+        ).model_dump(),
         message="登录成功",
     )
 
@@ -88,11 +99,30 @@ def me(authorization: str = Header(None), db: Session = Depends(get_db)):
     if not user:
         return _err("UNAUTHORIZED", "未登录或 token 无效", 401)
 
+    agent = db.query(Agent).filter(Agent.agent_id == user.agent_id).first()
     return SuccessResponse(
         data=MeData(
             userId=user.id,
             username=user.username,
             email=user.email,
             agentId=user.agent_id,
+            uniqueId=agent.unique_id if agent else None,
         ).model_dump(),
+    )
+
+
+@router.post("/claim")
+def claim_agent(req: ClaimRequest, db: Session = Depends(get_db)):
+    agent = db.query(Agent).filter(Agent.unique_id == req.uniqueId).first()
+    if not agent:
+        return _err("AGENT_NOT_FOUND", "Agent 不存在", 404)
+
+    return SuccessResponse(
+        data=ClaimData(
+            agentId=agent.agent_id,
+            agentName=agent.agent_name,
+            avatar=agent.avatar or "",
+            uniqueId=agent.unique_id,
+        ).model_dump(),
+        message="认领成功",
     )
