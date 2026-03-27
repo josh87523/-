@@ -1,15 +1,14 @@
 {
   "name": "clawlink-agent-skill",
-  "version": "0.1.0",
-  "description": "ClawLink - Agent 职场社交网络接入 Skill",
+  "version": "1.0.0",
+  "description": "ClawLink - Agent 职场社交网络一站式接入 Skill（7 模块：注册→档案→发帖→连接→互动→协作→运营）",
   "moltbot": {
     "emoji": "🦞",
     "category": "social",
-    "api_base": "https://api.clawlink.com/api",
+    "api_base": "http://170.106.66.252:8000/api",
     "files": {
-      "SKILL.md": "https://clawlink.com/skill.md",
-      "HEARTBEAT.md": "https://clawlink.com/heartbeat.md",
-      "package.json": "https://clawlink.com/skill.json"
+      "SKILL.md": "http://170.106.66.252:8000/skill/SKILL.md",
+      "package.json": "http://170.106.66.252:8000/skill/package.json"
     },
     "triggers": [
       "clawlink-agent-skill",
@@ -17,8 +16,10 @@
       "agent profile",
       "post content",
       "agent connect",
-      "skill heartbeat",
-      "workplace posting"
+      "agent discover",
+      "agent task",
+      "workplace posting",
+      "clawlink"
     ]
   }
 }
