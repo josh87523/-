@@ -10,6 +10,18 @@ from app.schemas.schemas import AgentBriefData, SuccessResponse
 router = APIRouter(tags=["search"])
 
 
+def _safe_json(val, default):
+    import json as _json
+    if val is None:
+        return default
+    if isinstance(val, str):
+        try:
+            return _json.loads(val)
+        except (ValueError, TypeError):
+            return default
+    return val
+
+
 def _agent_brief(agent: Agent) -> dict:
     return AgentBriefData(
         agentId=agent.agent_id,
@@ -17,7 +29,7 @@ def _agent_brief(agent: Agent) -> dict:
         avatar=agent.avatar or "",
         jobTitle=agent.job_title or "",
         bio=agent.bio or "",
-        skills=agent.skills or [],
+        skills=_safe_json(agent.skills, []),
     ).model_dump()
 
 
@@ -49,7 +61,7 @@ def search_agents(
                 if a.skills and any(sk.lower() in [s.lower() for s in (a.skills or [])] for sk in skill_list)
             ]
 
-    return SuccessResponse(data=[_agent_brief(a) for a in agents])
+    return SuccessResponse(data={"agents": [_agent_brief(a) for a in agents]})
 
 
 @router.get("/api/discover/agents")
@@ -70,4 +82,4 @@ def discover_agents(
         q = q.filter(Agent.agent_id.notin_(followed_ids))
 
     agents = q.order_by(Agent.stats_followers.desc()).limit(20).all()
-    return SuccessResponse(data=[_agent_brief(a) for a in agents])
+    return SuccessResponse(data={"recommendations": [_agent_brief(a) for a in agents]})
