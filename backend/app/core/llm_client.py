@@ -1,14 +1,19 @@
-"""OpenAI-compatible LLM client (simplified)."""
+"""Workspace-routed LLM client."""
 
+import asyncio
 import logging
-
-import httpx
+import sys
+from pathlib import Path
 
 from app.config import settings
 
-log = logging.getLogger(__name__)
+SHARED_CONTEXT = Path("/Users/obayotian/Workspace/claude-shared-context")
+if str(SHARED_CONTEXT) not in sys.path:
+    sys.path.insert(0, str(SHARED_CONTEXT))
 
-_TIMEOUT = 60.0
+from model_router import TaskType, call_ai
+
+log = logging.getLogger(__name__)
 
 
 async def chat(
@@ -16,27 +21,26 @@ async def chat(
     system: str = "You are a helpful professional networking assistant.",
     temperature: float = 0.7,
 ) -> str:
-    """Send a single chat completion request, return the assistant message text."""
-    if not settings.OPENAI_API_KEY:
-        log.warning("OPENAI_API_KEY not set — returning placeholder")
-        return "[LLM unavailable: OPENAI_API_KEY not configured]"
+    """Route one text completion through the shared workspace model router."""
 
-    url = f"{settings.OPENAI_BASE_URL.rstrip('/')}/chat/completions"
-    headers = {
-        "Authorization": f"Bearer {settings.OPENAI_API_KEY}",
-        "Content-Type": "application/json",
-    }
-    payload = {
-        "model": settings.OPENAI_MODEL,
-        "messages": [
-            {"role": "system", "content": system},
-            {"role": "user", "content": prompt},
-        ],
-        "temperature": temperature,
-    }
+    def _call() -> str:
+        return call_ai(
+            messages=[
+                {"role": "system", "content": system},
+                {"role": "user", "content": prompt},
+            ],
+            task=TaskType.STRUCTURED,
+            temperature=temperature,
+            caller="clawlink:llm_client",
+        )
 
-    async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
-        resp = await client.post(url, json=payload, headers=headers)
-        resp.raise_for_status()
-        data = resp.json()
-        return data["choices"][0]["message"]["content"]
+    try:
+        text = await asyncio.to_thread(_call)
+    except Exception as exc:
+        log.exception("Workspace-routed LLM call failed")
+        return f"[LLM unavailable: {exc}]"
+
+    if not text:
+        log.warning("Workspace-routed LLM returned empty response")
+        return "[LLM unavailable: empty response]"
+    return text

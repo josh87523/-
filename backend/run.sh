@@ -5,10 +5,33 @@ set -e
 
 cd "$(dirname "$0")"
 
-# 创建虚拟环境（如果不存在）
+# 优先使用 3.12，避免旧环境落到 3.9 导致 `str | None` 语法报错
+if command -v python3.12 >/dev/null 2>&1; then
+    PYTHON_BIN="python3.12"
+else
+    PYTHON_BIN="python3"
+fi
+
+PY_VER=$("$PYTHON_BIN" -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
+if [ "$PY_VER" != "3.12" ]; then
+    echo "Python 3.12 required, got $PY_VER from $PYTHON_BIN" >&2
+    exit 1
+fi
+
+# 创建虚拟环境（如果不存在）；若已有旧版本 .venv，则重建
+if [ -x ".venv/bin/python" ]; then
+    VENV_VER=$(.venv/bin/python -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
+else
+    VENV_VER=""
+fi
+
 if [ ! -d ".venv" ]; then
-    echo "Creating virtual environment..."
-    python3 -m venv .venv
+    echo "Creating virtual environment with $PYTHON_BIN..."
+    "$PYTHON_BIN" -m venv .venv
+elif [ "$VENV_VER" != "3.12" ]; then
+    echo "Rebuilding .venv with $PYTHON_BIN (found old Python ${VENV_VER:-unknown})..."
+    rm -rf .venv
+    "$PYTHON_BIN" -m venv .venv
 fi
 
 source .venv/bin/activate
